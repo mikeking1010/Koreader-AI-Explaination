@@ -13,6 +13,42 @@ local _ = require("gettext")
 local DEFAULT_MODEL = "gemini-3.1-flash-lite"
 local TEMP_API_KEY = "YOUR_API_KEY_HERE"
 
+local ASK_GEMINI_PROMPT = [[
+Your job is to be a helper for a person reading a book or document on their Kindle.
+
+Explain this highlighted passage to the user, prioritising the meaning of the highlighted text in your response.
+        
+Do not use more than 100 words in your response.
+
+Keep the response short and concise, with minimal use of multiple paragraphs.
+]]
+
+local FACT_CHECKER_PROMPT = [[
+Your job is to be a fact checker for a person reading a book or document on their Kindle.
+
+You have been given the passage to fact check.
+
+Use your knowledge of the real world, the context of the document, and your reasoning skills, to check the arguments.
+
+Account for the time period in which the text was written if it represents outdated scientific or historical consensus rather than deliberate misinformation.
+
+Be concise. Prioritize clarity and scannability for an e-ink display.
+
+Response Structure:
+1. Passage Summary: One sentence defining the core premise of the text.
+2. Claim Breakdown: For each verifiable factual claim, use this format:
+   - Claim: State the specific assertion extracted from the text.
+   - Verdict: [Accurate | Mostly Accurate | Misleading | Outdated | False | Unverifiable]
+   - Analysis: Explain the reasoning for your verdict.
+3. Synthesis / Contextual Note: A brief final note on whether any inaccuracies undermine the author's broader argument, or if they are minor details.
+
+Try to limit your response to 100 words where possible, but for longer, more complex requests, a limit of 200 words is allowed.
+
+If the passage does not contain anything FACTUALLY INCORRECT, do not return that if the passage includes prescriptives statements.
+Prescriptive statements should be challenged. For example, if the passage contains some real economic data, it should be shown to the user that it is accurate,
+but if the passage also includes an economic policy proposal, scrutinise this proposal also.
+]]
+
 local AskGemini = WidgetContainer:extend{ name = "askgemini" }
 
 function AskGemini:init()
@@ -25,7 +61,17 @@ function AskGemini:init()
                 text = _("Ask Gemini"),
                 enabled = true,
                 callback = function()
-                    self:onAskGemini(this.selected_text and this.selected_text.text)
+                    self:onAskGemini(this.selected_text and this.selected_text.text, ASK_GEMINI_PROMPT)
+                end,
+            }
+        end)
+
+        self.ui.highlight:addToHighlightDialog("factcheck_button", function(this)
+            return {
+                text = _("Fact Checker"),
+                enabled = true,
+                callback = function()
+                    self:onAskGemini(this.selected_text and this.selected_text.text, FACT_CHECKER_PROMPT)
                 end,
             }
         end)
@@ -114,7 +160,7 @@ function AskGemini:getContext()
     return title, chapter
 end
 
-function AskGemini:onAskGemini(highlighted_text)
+function AskGemini:onAskGemini(highlighted_text, prompt)
     if not highlighted_text or highlighted_text == "" then return end
 
     local api_key = self.settings:readSetting("api_key")
@@ -129,16 +175,10 @@ function AskGemini:onAskGemini(highlighted_text)
     local prompt = string.format(
         [[Context: %s\n\nHighlighted passage:\n\"%s\"\n\n
         
-        Your job is to be a helper for a person reading a book or document on their Kindle.
-
-        Explain this highlighted passage to the user, prioritising the meaning of the highlighted text in your response.
-        
-        Do not use more than 100 words in your response.
-
-        Keep the response short and concise, with minimal use of multiple paragraphs.
+        %s
 
         ]],
-        context_str, highlighted_text)
+        context_str, highlighted_text, prompt)
 
     local loading = InfoMessage:new{ text = _("Asking Gemini…") }
     UIManager:show(loading)
