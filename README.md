@@ -4,10 +4,12 @@ This is going to be a simple tool that will do a few things but do them well. Th
 ## To use
 1. Download the repo and copy/move it into your koreader/plugins folder in your Kindle/Kobo/other e-readers storage.
 2. Get your free Gemini API key in the [Gemini AI Studio](https://aistudio.google.com/).
-3. In the main.lua file, find and replace YOUR_API_KEY_HERE with your API key.
+3. In the top main menu bar, find the "Ask Gemini" settings, and use either the QR code and localhost page through your phone or manually type your Gemini API key.
 4. Setup complete! To use the plugin, highlight some text in a document and press "Ask Gemini"
 
 > [!NOTE]
 > Make sure your Kindle is connected to the internet in the Koreader network settings tab.
+
+By default the plugin uses gemini-3.1-flash-lite.
 
 Read about future changes [here](FEATURE_PIPELINE.md)

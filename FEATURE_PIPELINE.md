@@ -3,3 +3,4 @@
     - Model selection from dropdown menu
     - Localhost settings
     - Custom skills
+- Expanded local context: add option to request with expanded context (chapter or something) instead of just the passage and metadata.

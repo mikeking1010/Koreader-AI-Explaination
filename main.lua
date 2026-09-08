@@ -1,17 +1,38 @@
 local InfoMessage = require("ui/widget/infomessage")
 local InputDialog = require("ui/widget/inputdialog")
+local ConfirmBox = require("ui/widget/confirmbox")
 local UIManager = require("ui/uimanager")
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local LuaSettings = require("luasettings")
 local DataStorage = require("datastorage")
+local socket = require("socket")
 local https = require("ssl.https")
 local ltn12 = require("ltn12")
 local json = require("json")
 local logger = require("logger")
 local _ = require("gettext")
 
+local CenterContainer = require("ui/widget/container/centercontainer")
+local FrameContainer = require("ui/widget/container/framecontainer")
+local InputContainer = require("ui/widget/container/inputcontainer")
+local MovableContainer = require("ui/widget/container/movablecontainer")
+local VerticalGroup = require("ui/widget/verticalgroup")
+local VerticalSpan = require("ui/widget/verticalspan")
+local TextBoxWidget = require("ui/widget/textboxwidget")
+local Button = require("ui/widget/button")
+local QRWidget = require("ui/widget/qrwidget")
+local Blitbuffer = require("ffi/blitbuffer")
+local Geom = require("ui/geometry")
+local Size = require("ui/size")
+local Font = require("ui/font")
+local Screen = require("device").screen
+
 local DEFAULT_MODEL = "gemini-3.1-flash-lite"
-local TEMP_API_KEY = "YOUR_API_KEY_HERE"
+
+local Device = require("device")
+
+local KEY_SERVER_PORT = 8848
+local KEY_SERVER_TIMEOUT = 300
 
 local ASK_GEMINI_PROMPT = [[
 Your job is to be a helper for a person reading a book or document on their Kindle.
@@ -52,7 +73,6 @@ local AskGemini = WidgetContainer:extend{ name = "askgemini" }
 
 function AskGemini:init()
     self.settings = LuaSettings:open(DataStorage:getSettingsDir() .. "/askgemini.lua")
-    self.settings:saveSetting("api_key", TEMP_API_KEY)
 
     if self.ui and self.ui.highlight then
         self.ui.highlight:addToHighlightDialog("askgemini_button", function(this)
@@ -86,6 +106,11 @@ function AskGemini:addToMainMenu(menu_items)
         text = _("Ask Gemini"),
         sub_item_table = {
             {
+                text = _("Set API key via QR code (uses localhost)"),
+                keep_menu_open = true,
+                callback = function() self:startKeyServer() end,
+            },
+            {
                 text_func = function()
                     local k = self.settings:readSetting("api_key")
                     return k and k ~= "" and _("Gemini API key (set)") or _("Gemini API key (not set)")
@@ -114,7 +139,8 @@ function AskGemini:editApiKey()
         buttons = {{
             { text = _("Cancel"), callback = function() UIManager:close(dialog) end },
             { text = _("Save"), is_enter_default = true, callback = function()
-                self.settings:saveSetting("api_key", dialog:getInputText())
+                local key = dialog:getInputText():gsub("^%s+", ""):gsub("%s+$", "")
+                self.settings:saveSetting("api_key", key)
                 self.settings:flush()
                 UIManager:close(dialog)
             end },
@@ -140,6 +166,194 @@ function AskGemini:editModel()
     }
     UIManager:show(dialog)
     dialog:onShowKeyboard()
+end
+
+-- ===== QR / local HTTP server key entry =====
+
+local function getLocalIP()
+    local ok, s = pcall(socket.udp)
+    if not ok or not s then return nil end
+    s:setpeername("8.8.8.8", 80) -- no packet actually sent, just picks the outbound iface
+    local ip = s:getsockname()
+    s:close()
+    return ip
+end
+
+local function urldecode(s)
+    s = s:gsub("+", " ")
+    s = s:gsub("%%(%x%x)", function(h) return string.char(tonumber(h, 16)) end)
+    return s
+end
+
+local FORM_HTML = [[<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Set Gemini key</title></head><body style="font-family:sans-serif;max-width:400px;margin:2em auto;padding:0 1em">
+<h3>Set Gemini API key</h3>
+<form method="POST" action="/save">
+<input type="password" name="key" placeholder="Paste your Gemini API key" style="width:100%%;padding:.5em;font-size:1em" autofocus>
+<button type="submit" style="margin-top:1em;padding:.5em 1em;font-size:1em">Save to Kindle</button>
+</form></body></html>]]
+
+local DONE_HTML = [[<!doctype html><html><body style="font-family:sans-serif;max-width:400px;margin:2em auto;padding:0 1em">
+<h3>Saved</h3><p>You can close this tab and go back to your Kindle.</p></body></html>]]
+
+function AskGemini:stopKeyServer(message)
+    if self.key_server_task then
+        UIManager:unschedule(self.key_server_task)
+        self.key_server_task = nil
+    end
+    if self.key_server_sock then
+        self.key_server_sock:close()
+        self.key_server_sock = nil
+    end
+    if self.key_qr_dialog then
+        UIManager:close(self.key_qr_dialog)
+        self.key_qr_dialog = nil
+    end
+    if message then
+        UIManager:show(InfoMessage:new{ text = message, timeout = 3 })
+    end
+end
+
+local function buildQRSetupWidget(url, on_cancel)
+    local screen_w, screen_h = Screen:getWidth(), Screen:getHeight()
+    local content_w = math.floor(screen_w * 0.9)
+    local qr_size = math.floor(math.min(screen_w, screen_h) * 0.8)
+
+    local link_text = TextBoxWidget:new{
+        text = url,
+        face = Font:getFace("cfont", 20),
+        width = content_w,
+        alignment = "center",
+    }
+
+    local qr = QRWidget:new{
+        text = url,
+        width = qr_size,
+        height = qr_size,
+    }
+
+    local cancel_button = Button:new{
+        text = _("Cancel"),
+        width = math.floor(content_w * 0.5),
+        callback = on_cancel,
+    }
+
+    local frame = FrameContainer:new{
+        background = Blitbuffer.COLOR_WHITE,
+        bordersize = Size.border.window,
+        padding = Size.padding.large,
+        VerticalGroup:new{
+            align = "center",
+            link_text,
+            VerticalSpan:new{ width = Size.padding.large },
+            qr,
+            VerticalSpan:new{ width = Size.padding.large },
+            cancel_button,
+        },
+    }
+
+    local widget = InputContainer:new{}
+    widget[1] = CenterContainer:new{
+        dimen = Geom:new{ w = screen_w, h = screen_h },
+        MovableContainer:new{ frame },
+    }
+    return widget
+end
+
+local function allowPortThroughFirewall(port)
+    if Device:isKindle() then
+        pcall(os.execute, string.format(
+            "iptables -A INPUT -p tcp --dport %d -j ACCEPT 2>/dev/null", port))
+    end
+end
+
+function AskGemini:startKeyServer()
+    local ip = getLocalIP()
+    if not ip then
+        UIManager:show(InfoMessage:new{ text = _("Could not detect local IP — make sure Wi-Fi is on."), timeout = 3 })
+        return
+    end
+
+    -- Always close any previous server before starting a new one
+    if self.key_server_sock then
+        self.key_server_sock:close()
+        self.key_server_sock = nil
+    end
+    if self.key_server_task then
+        UIManager:unschedule(self.key_server_task)
+        self.key_server_task = nil
+    end
+
+    allowPortThroughFirewall(KEY_SERVER_PORT)
+
+    local server = socket.tcp()
+    server:setoption("reuseaddr", true)
+    server:settimeout(0)
+    local bind_ok, bind_err = server:bind("0.0.0.0", KEY_SERVER_PORT)
+    if not bind_ok then
+        UIManager:show(InfoMessage:new{ text = _("Could not start server: ") .. tostring(bind_err), timeout = 3 })
+        return
+    end
+    server:listen(1)
+    self.key_server_sock = server
+
+    -- (rest of the function unchanged from before)
+
+    local url = string.format("http://%s:%d/", ip, KEY_SERVER_PORT)
+
+    local QRMessage = require("ui/widget/qrmessage")
+    self.key_qr_dialog = QRMessage:new{
+        text = url,
+        width = Screen:getWidth(),
+        height = Screen:getHeight(),
+    }
+    UIManager:show(self.key_qr_dialog)
+    UIManager:forceRePaint()
+
+    local function poll()
+        local client = self.key_server_sock and self.key_server_sock:accept()
+        if client then
+            client:settimeout(2)
+            local request_line = client:receive("*l") or ""
+            local content_length = 0
+            while true do
+                local line = client:receive("*l")
+                if not line or line == "" then break end
+                local len = line:match("^[Cc]ontent%-[Ll]ength:%s*(%d+)")
+                if len then content_length = tonumber(len) end
+            end
+
+            if request_line:match("^GET / ") then
+                local body = FORM_HTML
+                client:send("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: "
+                    .. #body .. "\r\nConnection: close\r\n\r\n" .. body)
+                client:close()
+            elseif request_line:match("^POST /save ") then
+                local body = content_length > 0 and client:receive(content_length) or ""
+                client:send("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: "
+                    .. #DONE_HTML .. "\r\nConnection: close\r\n\r\n" .. DONE_HTML)
+                client:close()
+
+                local key = body:match("key=([^&]*)")
+                key = key and urldecode(key) or ""
+                key = key:gsub("^%s+", ""):gsub("%s+$", "")  -- trim
+                if key ~= "" then
+                    self.settings:saveSetting("api_key", key)
+                    self.settings:flush()
+                    self:stopKeyServer(_("Gemini API key saved."))
+                    return
+                end
+            else
+                client:close()
+            end
+        end
+
+        self.key_server_task = function() poll() end
+        UIManager:scheduleIn(0.5, self.key_server_task)
+    end
+
+    self.key_server_task = function() poll() end
+    UIManager:scheduleIn(0.5, self.key_server_task)
 end
 
 -- Retrieves the document title and chapter title from Koreader
@@ -208,8 +422,11 @@ function AskGemini:onAskGemini(highlighted_text, prompt)
         answer = part and part.text or _("Could not parse Gemini's response.")
         if not part then logger.warn("AskGemini parse fail:", raw) end
     else
-        answer = _("Error contacting Gemini: ") .. tostring(code)
-        logger.warn("AskGemini request fail:", code, table.concat(response))
+        local raw = table.concat(response)
+        local dok, data = pcall(json.decode, raw)
+        local msg = dok and data.error and data.error.message
+        answer = _("Error contacting Gemini: ") .. tostring(code) .. (msg and (" — " .. msg) or "")
+        logger.warn("AskGemini request fail:", code, raw)
     end
 
     UIManager:show(InfoMessage:new{ text = answer, show_icon = false })
