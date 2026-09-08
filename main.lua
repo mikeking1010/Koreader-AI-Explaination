@@ -27,47 +27,14 @@ local Size = require("ui/size")
 local Font = require("ui/font")
 local Screen = require("device").screen
 
+local Prompts = require("prompts")
+
 local DEFAULT_MODEL = "gemini-3.1-flash-lite"
 
 local Device = require("device")
 
 local KEY_SERVER_PORT = 8848
 local KEY_SERVER_TIMEOUT = 300
-
-local ASK_GEMINI_PROMPT = [[
-Your job is to be a helper for a person reading a book or document on their Kindle.
-
-Explain this highlighted passage to the user, prioritising the meaning of the highlighted text in your response.
-        
-Do not use more than 100 words in your response.
-
-Keep the response short and concise, with minimal use of multiple paragraphs.
-]]
-
-local FACT_CHECKER_PROMPT = [[
-Your job is to be a fact checker for a person reading a book or document on their Kindle.
-
-You have been given the passage to fact check.
-
-Use your knowledge of the real world, the context of the document, and your reasoning skills, to check the arguments.
-
-Account for the time period in which the text was written if it represents outdated scientific or historical consensus rather than deliberate misinformation.
-
-Be concise. Prioritize clarity and scannability for an e-ink display, with minimal use of multiple paragraphs.
-
-Responses should be structured with a sentence at the start defining the core premise of the text, then a breakdown of each claim and the raising of issues,
-and finally with a synthesis of everything stated into a paragraph stating whether the authors broader argument is wrong or not or other.
-
-Limit your entire response to 100 words.
-Do not use more than 100 words in your response.
-
-If the passage does not contain anything factually incorrect, do not stop there if the passage includes prescriptives statements.
-Prescriptive statements should be challenged. For example, if the passage contains some real economic data, it should be shown to the user that it is accurate,
-but if the passage also includes an economic policy proposal, scrutinise this proposal also.
-
-Also, because you are on a kindle, please refrain from using .md formatting and subtitles. Assume that the reader is going to read the entire thing.
-If you dispute different claims, or have a summary, breakdowns, and synthesis, separate these by making new paragraphs, but do not make subtitles (or start paragraphs with titles and colons) and mark down formatting because KOReader does not render it.
-]]
 
 local AskGemini = WidgetContainer:extend{ name = "askgemini" }
 
@@ -77,10 +44,10 @@ function AskGemini:init()
     if self.ui and self.ui.highlight then
         self.ui.highlight:addToHighlightDialog("askgemini_button", function(this)
             return {
-                text = _("✦ Ask Gemini"),
+                text = _("✦ Explain with Gemini"),
                 enabled = true,
                 callback = function()
-                    self:onAskGemini(this.selected_text and this.selected_text.text, ASK_GEMINI_PROMPT)
+                    self:onAskGemini(this.selected_text and this.selected_text.text, Prompts.ASK_GEMINI_PROMPT)
                 end,
             }
         end)
@@ -90,7 +57,17 @@ function AskGemini:init()
                 text = _("✦ Fact Checker"),
                 enabled = true,
                 callback = function()
-                    self:onAskGemini(this.selected_text and this.selected_text.text, FACT_CHECKER_PROMPT)
+                    self:onAskGemini(this.selected_text and this.selected_text.text, Prompts.FACT_CHECKER_PROMPT)
+                end,
+            }
+        end)
+
+        self.ui.highlight:addToHighlightDialog("eli_button", function(this)
+            return {
+                text = _("✦ Explain Like I'm 5"),
+                enabled = true,
+                callback = function()
+                    self:onAskGemini(this.selected_text and this.selected_text.text, Prompts.ELI5_PROMPT)
                 end,
             }
         end)
