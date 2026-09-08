@@ -11,11 +11,13 @@ local logger = require("logger")
 local _ = require("gettext")
 
 local DEFAULT_MODEL = "gemini-3.1-flash-lite"
+local TEMP_API_KEY = "YOUR_API_KEY_HERE"
 
 local AskGemini = WidgetContainer:extend{ name = "askgemini" }
 
 function AskGemini:init()
     self.settings = LuaSettings:open(DataStorage:getSettingsDir() .. "/askgemini.lua")
+    self.settings:saveSetting("api_key", TEMP_API_KEY)
 
     if self.ui and self.ui.highlight then
         self.ui.highlight:addToHighlightDialog("askgemini_button", function(this)

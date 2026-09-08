@@ -1,0 +1,1 @@
+- Easy API key: enter your API key through a localhost page on your phone accessed by scanning a QR code on the e-reader.
