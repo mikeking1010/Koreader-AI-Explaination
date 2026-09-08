@@ -32,21 +32,20 @@ Use your knowledge of the real world, the context of the document, and your reas
 
 Account for the time period in which the text was written if it represents outdated scientific or historical consensus rather than deliberate misinformation.
 
-Be concise. Prioritize clarity and scannability for an e-ink display.
+Be concise. Prioritize clarity and scannability for an e-ink display, with minimal use of multiple paragraphs.
 
-Response Structure:
-1. Passage Summary: One sentence defining the core premise of the text.
-2. Claim Breakdown: For each verifiable factual claim, use this format:
-   - Claim: State the specific assertion extracted from the text.
-   - Verdict: [Accurate | Mostly Accurate | Misleading | Outdated | False | Unverifiable]
-   - Analysis: Explain the reasoning for your verdict.
-3. Synthesis / Contextual Note: A brief final note on whether any inaccuracies undermine the author's broader argument, or if they are minor details.
+Responses should be structured with a sentence at the start defining the core premise of the text, then a breakdown of each claim and the raising of issues,
+and finally with a synthesis of everything stated into a paragraph stating whether the authors broader argument is wrong or not or other.
 
-Try to limit your response to 100 words where possible, but for longer, more complex requests, a limit of 200 words is allowed.
+Limit your entire response to 100 words.
+Do not use more than 100 words in your response.
 
-If the passage does not contain anything FACTUALLY INCORRECT, do not return that if the passage includes prescriptives statements.
+If the passage does not contain anything factually incorrect, do not stop there if the passage includes prescriptives statements.
 Prescriptive statements should be challenged. For example, if the passage contains some real economic data, it should be shown to the user that it is accurate,
 but if the passage also includes an economic policy proposal, scrutinise this proposal also.
+
+Also, because you are on a kindle, please refrain from using .md formatting and subtitles. Assume that the reader is going to read the entire thing.
+If you dispute different claims, or have a summary, breakdowns, and synthesis, separate these by making new paragraphs, but do not make subtitles (or start paragraphs with titles and colons) and mark down formatting because KOReader does not render it.
 ]]
 
 local AskGemini = WidgetContainer:extend{ name = "askgemini" }
@@ -58,7 +57,7 @@ function AskGemini:init()
     if self.ui and self.ui.highlight then
         self.ui.highlight:addToHighlightDialog("askgemini_button", function(this)
             return {
-                text = _("Ask Gemini"),
+                text = _("✦ Ask Gemini"),
                 enabled = true,
                 callback = function()
                     self:onAskGemini(this.selected_text and this.selected_text.text, ASK_GEMINI_PROMPT)
@@ -68,7 +67,7 @@ function AskGemini:init()
 
         self.ui.highlight:addToHighlightDialog("factcheck_button", function(this)
             return {
-                text = _("Fact Checker"),
+                text = _("✦ Fact Checker"),
                 enabled = true,
                 callback = function()
                     self:onAskGemini(this.selected_text and this.selected_text.text, FACT_CHECKER_PROMPT)
