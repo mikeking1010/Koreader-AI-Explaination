@@ -1,2 +1,5 @@
 - Easy API key: enter your API key through a localhost page on your phone accessed by scanning a QR code on the e-reader.
-- Fact checker
+- Better settings/more customisation
+    - Model selection from dropdown menu
+    - Localhost settings
+    - Custom skills
