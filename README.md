@@ -7,7 +7,7 @@ This is going to be a simple tool that will do a few things but do them well. Th
 3. In the main.lua file, find and replace YOUR_API_KEY_HERE with your API key.
 4. Setup complete! To use the plugin, highlight some text in a document and press "Ask Gemini"
 
-[!NOTE]
-Make sure your Kindle is connected to the internet in the Koreader network settings tab.
+> [!NOTE]
+> Make sure your Kindle is connected to the internet in the Koreader network settings tab.
 
 Read about future changes [here](FEATURE_PIPELINE.md)
