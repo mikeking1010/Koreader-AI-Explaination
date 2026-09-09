@@ -47,7 +47,7 @@ function AskGemini:init()
                 text = _("✦ Explain with Gemini"),
                 enabled = true,
                 callback = function()
-                    self:onAskGemini(this.selected_text and this.selected_text.text, Prompts.ASK_GEMINI_PROMPT)
+                    self:onAskGemini(this.selected_text and this.selected_text.text, Prompts.ASK_GEMINI_PROMPT, "✦ Explain with Gemini")
                 end,
             }
         end)
@@ -57,7 +57,7 @@ function AskGemini:init()
                 text = _("✦ Fact Checker"),
                 enabled = true,
                 callback = function()
-                    self:onAskGemini(this.selected_text and this.selected_text.text, Prompts.FACT_CHECKER_PROMPT)
+                    self:onAskGemini(this.selected_text and this.selected_text.text, Prompts.FACT_CHECKER_PROMPT, "✦ Fact Checker")
                 end,
             }
         end)
@@ -67,7 +67,7 @@ function AskGemini:init()
                 text = _("✦ Explain Like I'm 5"),
                 enabled = true,
                 callback = function()
-                    self:onAskGemini(this.selected_text and this.selected_text.text, Prompts.ELI5_PROMPT)
+                    self:onAskGemini(this.selected_text and this.selected_text.text, Prompts.ELI5_PROMPT, "✦ Explain Like I'm 5")
                 end,
             }
         end)
@@ -350,7 +350,7 @@ function AskGemini:getContext()
     return title, chapter
 end
 
-function AskGemini:onAskGemini(highlighted_text, prompt)
+function AskGemini:onAskGemini(highlighted_text, prompt, operation)
     if not highlighted_text or highlighted_text == "" then return end
 
     local api_key = self.settings:readSetting("api_key")

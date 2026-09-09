@@ -1,6 +1,14 @@
 # Highlight passages from documents in Koreader and get Gemini to explain them
 This is going to be a simple tool that will do a few things but do them well. There are alternatives out there for people who want large customisation in the live plugin.
 
+<p align="center">
+  <img src="Screenshots/highlight_menu.png" alt="Highlight menu" width="16%" />
+  <img src="Screenshots/eli5_button.png" alt="ELI5 feature" width="16%" />
+  <img src="Screenshots/factcheck_button.png" alt="Fact checker" width="16%" />
+  <img src="Screenshots/mainmenu.png" alt="Settings menu" width="16%" />
+  <img src="Screenshots/QR code.png" alt="QR code" width="16%" />
+</p>
+
 ## Features
 - Explain with Gemini: Generic summary and explanation prompt.
 - Fact Checker: Checks claims against external fact and scrutinises propositions and arguments.
