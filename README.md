@@ -5,6 +5,7 @@ This is going to be a simple tool that will do a few things but do them well. Th
   <img src="Screenshots/highlight_menu.png" alt="Highlight menu" width="27%" />
   <img src="Screenshots/eli5_button.png" alt="ELI5 feature" width="27%" />
   <img src="Screenshots/factcheck_button.png" alt="Fact checker" width="27%" />
+  <img src="Screenshots/custom_button.png" alt="Custom button" width="27%" />
   <img src="Screenshots/mainmenu.png" alt="Settings menu" width="27%" />
   <img src="Screenshots/QR code.png" alt="QR code" width="27%" />
 </p>
@@ -13,6 +14,7 @@ This is going to be a simple tool that will do a few things but do them well. Th
 - Explain with Gemini: Generic summary and explanation prompt.
 - Fact Checker: Checks claims against external fact and scrutinises propositions and arguments.
 - Explain Like I'm 5: Summary and explanation taylored to a layman and containing more real-world examples and without jargon.
+- Custom Button: Executes a user-selected prompt which can be set in the top main menu bar.
 
 Read about future changes [here](FEATURE_PIPELINE.md)
 

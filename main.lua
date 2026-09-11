@@ -71,6 +71,40 @@ function AskGemini:init()
                 end,
             }
         end)
+
+        self.ui.highlight:addToHighlightDialog("askgemini_custom_button", function(this)
+            return {
+                text = _("✦ Custom Prompt"),
+                enabled = true,
+                callback = function()
+                    local idx = self.settings:readSetting("custom_prompt_selected") or 1
+                    local entry = Prompts.CUSTOM_PROMPTS[idx]
+                    if not entry then
+                        UIManager:show(InfoMessage:new{
+                            text = _("No custom prompt selected — pick one in menu → Ask Gemini → Custom Prompt."),
+                            timeout = 3,
+                        })
+                        return
+                    end
+                    
+                    local prompt_text = entry.prompt
+
+                    -- If the prompt contains %LANG% then it has to be language learning related and thus this is necessary.
+                    if prompt_text:find("%%LANG%%") then
+                        local lang = self.settings:readSetting("target_language")
+                        if not lang or lang == "" then
+                            UIManager:show(InfoMessage:new{
+                                text = _("Set a target language first (menu → Ask Gemini → Target language)."),
+                                timeout = 3,
+                            })
+                            return
+                        end
+                        prompt_text = prompt_text:gsub("%%LANG%%", function() return lang end)
+                    end
+                    self:onAskGemini(this.selected_text and this.selected_text.text, prompt_text, entry.name)
+                end,
+            }
+        end)
     end
 
     if self.ui and self.ui.menu then
@@ -96,6 +130,19 @@ function AskGemini:addToMainMenu(menu_items)
                 callback = function() self:editApiKey() end,
             },
             {
+                text = _("Custom Prompt"),
+                sub_item_table_func = function() return self:buildCustomPromptMenu() end,
+            },
+            {
+                text_func = function()
+                    return _("Target language: ") .. (self.settings:readSetting("target_language") or _("not set"))
+                end,
+                keep_menu_open = true,
+                callback = function(touchmenu_instance)
+                    self:editTargetLanguage(touchmenu_instance)
+                end,
+            },
+            {
                 text_func = function()
                     return _("Model: ") .. (self.settings:readSetting("model") or DEFAULT_MODEL)
                 end,
@@ -104,6 +151,45 @@ function AskGemini:addToMainMenu(menu_items)
             },
         },
     }
+end
+
+function AskGemini:editTargetLanguage(touchmenu_instance)
+    local dialog
+    dialog = InputDialog:new{
+        title = _("Target language"),
+        input = self.settings:readSetting("target_language") or "",
+        input_hint = _("e.g. French, Japanese, Spanish"),
+        buttons = {{
+            { text = _("Cancel"), callback = function() UIManager:close(dialog) end },
+            { text = _("Save"), is_enter_default = true, callback = function()
+                self.settings:saveSetting("target_language", dialog:getInputText())
+                self.settings:flush()
+                UIManager:close(dialog)
+                if touchmenu_instance then
+                    touchmenu_instance:updateItems()
+                end
+            end },
+        }},
+    }
+    UIManager:show(dialog)
+    dialog:onShowKeyboard()
+end
+
+function AskGemini:buildCustomPromptMenu()
+    local items = {}
+    for i, entry in ipairs(Prompts.CUSTOM_PROMPTS) do
+        table.insert(items, {
+            text = entry.name,
+            checked_func = function()
+                return self.settings:readSetting("custom_prompt_selected") == i
+            end,
+            callback = function()
+                self.settings:saveSetting("custom_prompt_selected", i)
+                self.settings:flush()
+            end,
+        })
+    end
+    return items
 end
 
 function AskGemini:editApiKey()

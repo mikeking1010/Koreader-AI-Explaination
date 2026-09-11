@@ -51,8 +51,22 @@ Keep the response short and concise, with minimal use of multiple paragraphs.
 Do not use markdown formatting because the kindle cannot process it.
 ]]
 
+-- Figured I'd split this away from the other prompts otherwise could get muddled. These may be less refined.
+local CUSTOM_PROMPTS = {
+    { name = "Translate to target language", prompt = [[
+
+Translate the highlighted passage into %LANG%. 
+
+If the translation contains more than 120 words respond with "Passage is too long, please highlight something shorter (the translator will not return more than 120 words)".
+
+Keep it natural and concise. Do not use markdown.
+
+]] },
+}
+
 return {
     ASK_GEMINI_PROMPT = ASK_GEMINI_PROMPT,
     FACT_CHECKER_PROMPT = FACT_CHECKER_PROMPT,
     ELI5_PROMPT = ELI5_PROMPT,
+    CUSTOM_PROMPTS = CUSTOM_PROMPTS
 }

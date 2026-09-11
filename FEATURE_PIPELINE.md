@@ -1,6 +1,10 @@
-- Easy API key: enter your API key through a localhost page on your phone accessed by scanning a QR code on the e-reader.
 - Better settings/more customisation
     - Model selection from dropdown menu
     - Localhost settings
     - Custom skills
 - Expanded local context: add option to request with expanded context (chapter or something) instead of just the passage and metadata.
+- Custom prompts:
+    - Memory anchor: remind the user of who or what something is in the book they are reading. Useful for fiction.
+    - Bridge to today: make a modern analogy to help the user understand concepts.
+    - Persona: respond or explain something through a certain character/persona.
+    - Configurable custom prompts using localhost.
